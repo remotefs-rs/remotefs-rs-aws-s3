@@ -35,6 +35,7 @@ use remotefs::{File, RemoteError, RemoteErrorType, RemoteFs, RemoteResult};
 use s3::creds::Credentials;
 use s3::serde_types::Object;
 use s3::Region;
+use std::cell::RefCell;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -44,7 +45,7 @@ pub use s3::Bucket;
 /// Aws s3 file system client
 pub struct AwsS3Fs {
     bucket: Option<Bucket>,
-    wrkdir: PathBuf,
+    wrkdir: RefCell<PathBuf>,
     // -- options
     bucket_name: String,
     region: String,
@@ -60,7 +61,7 @@ impl AwsS3Fs {
     pub fn new<S: AsRef<str>>(bucket: S, region: S) -> Self {
         Self {
             bucket: None,
-            wrkdir: PathBuf::from("/"),
+            wrkdir: RefCell::new(PathBuf::from("/")),
             bucket_name: bucket.as_ref().to_string(),
             region: region.as_ref().to_string(),
             profile: None,
@@ -113,6 +114,11 @@ impl AwsS3Fs {
     }
 
     // -- private
+
+    /// Get working directory
+    fn wrkdir(&self) -> PathBuf {
+        self.wrkdir.borrow().clone()
+    }
 
     /// List objects contained in `p` path
     fn list_objects(&self, p: &Path, list_dir: bool) -> RemoteResult<Vec<S3Object>> {
@@ -188,7 +194,7 @@ impl AwsS3Fs {
     /// Make s3 absolute path from a given path
     fn resolve(&self, p: &Path) -> PathBuf {
         path_utils::diff_paths(
-            path_utils::absolutize(self.wrkdir.as_path(), p),
+            path_utils::absolutize(self.wrkdir().as_path(), p),
             &Path::new("/"),
         )
         .unwrap_or_default()
@@ -227,7 +233,7 @@ impl AwsS3Fs {
     }
 
     /// Check connection status
-    fn check_connection(&mut self) -> RemoteResult<()> {
+    fn check_connection(&self) -> RemoteResult<()> {
         if self.is_connected() {
             Ok(())
         } else {
@@ -288,22 +294,22 @@ impl RemoteFs for AwsS3Fs {
         }
     }
 
-    fn is_connected(&mut self) -> bool {
+    fn is_connected(&self) -> bool {
         self.bucket.is_some()
     }
 
-    fn pwd(&mut self) -> RemoteResult<PathBuf> {
+    fn pwd(&self) -> RemoteResult<PathBuf> {
         self.check_connection()?;
-        Ok(self.wrkdir.clone())
+        Ok(self.wrkdir())
     }
 
-    fn change_dir(&mut self, dir: &Path) -> RemoteResult<PathBuf> {
+    fn change_dir(&self, dir: &Path) -> RemoteResult<PathBuf> {
         self.check_connection()?;
         // Always allow entering root
         if dir == Path::new("/") {
-            self.wrkdir = dir.to_path_buf();
-            debug!("New working directory: {}", self.wrkdir.display());
-            return Ok(self.wrkdir.clone());
+            *self.wrkdir.borrow_mut() = dir.to_path_buf();
+            debug!("New working directory: {}", self.wrkdir().display());
+            return Ok(self.wrkdir());
         }
         // Check if directory exists
         debug!("Entering directory {}...", dir.display());
@@ -315,21 +321,21 @@ impl RemoteFs for AwsS3Fs {
             .stat_object(PathBuf::from(dir_s.as_str()).as_path())
             .is_ok()
         {
-            self.wrkdir = path_utils::absolutize(Path::new("/"), dir_p.as_path());
-            debug!("New working directory: {}", self.wrkdir.display());
-            Ok(self.wrkdir.clone())
+            *self.wrkdir.borrow_mut() = path_utils::absolutize(Path::new("/"), dir_p.as_path());
+            debug!("New working directory: {}", self.wrkdir().display());
+            Ok(self.wrkdir())
         } else {
             Err(RemoteError::new(RemoteErrorType::NoSuchFileOrDirectory))
         }
     }
 
-    fn list_dir(&mut self, path: &Path) -> RemoteResult<Vec<File>> {
+    fn list_dir(&self, path: &Path) -> RemoteResult<Vec<File>> {
         self.check_connection()?;
         self.list_objects(path, true)
             .map(|x| x.into_iter().map(|x| x.into()).collect())
     }
 
-    fn stat(&mut self, path: &Path) -> RemoteResult<File> {
+    fn stat(&self, path: &Path) -> RemoteResult<File> {
         self.check_connection()?;
         let path = self.resolve(path);
         if let Ok(obj) = self.stat_object(path.as_path()) {
@@ -341,11 +347,11 @@ impl RemoteFs for AwsS3Fs {
         self.stat_object(path.as_path()).map(|x| x.into())
     }
 
-    fn setstat(&mut self, _path: &Path, _metadata: Metadata) -> RemoteResult<()> {
+    fn setstat(&self, _path: &Path, _metadata: Metadata) -> RemoteResult<()> {
         Err(RemoteError::new(RemoteErrorType::UnsupportedFeature))
     }
 
-    fn exists(&mut self, path: &Path) -> RemoteResult<bool> {
+    fn exists(&self, path: &Path) -> RemoteResult<bool> {
         match self.stat(path) {
             Ok(_) => Ok(true),
             Err(RemoteError {
@@ -356,7 +362,7 @@ impl RemoteFs for AwsS3Fs {
         }
     }
 
-    fn remove_file(&mut self, path: &Path) -> RemoteResult<()> {
+    fn remove_file(&self, path: &Path) -> RemoteResult<()> {
         self.check_connection()?;
         let path = Self::fmt_path(self.resolve(path).as_path(), true);
         debug!("Removing object {}...", path);
@@ -373,7 +379,7 @@ impl RemoteFs for AwsS3Fs {
             })
     }
 
-    fn remove_dir(&mut self, path: &Path) -> RemoteResult<()> {
+    fn remove_dir(&self, path: &Path) -> RemoteResult<()> {
         self.check_connection()?;
         if !self.exists(path).ok().unwrap_or(false) {
             return Err(RemoteError::new(RemoteErrorType::NoSuchFileOrDirectory));
@@ -394,7 +400,7 @@ impl RemoteFs for AwsS3Fs {
             })
     }
 
-    fn remove_dir_all(&mut self, path: &Path) -> RemoteResult<()> {
+    fn remove_dir_all(&self, path: &Path) -> RemoteResult<()> {
         debug!("Removing all content of {}", path.display());
         if self.remove_dir(path).is_err() {
             self.remove_file(path)
@@ -403,7 +409,7 @@ impl RemoteFs for AwsS3Fs {
         }
     }
 
-    fn create_dir(&mut self, path: &Path, _mode: UnixPex) -> RemoteResult<()> {
+    fn create_dir(&self, path: &Path, _mode: UnixPex) -> RemoteResult<()> {
         self.check_connection()?;
         let dir: String = Self::fmt_path(self.resolve(path).as_path(), true);
         debug!("Making directory {}...", dir);
@@ -428,36 +434,36 @@ impl RemoteFs for AwsS3Fs {
             })
     }
 
-    fn symlink(&mut self, _path: &Path, _target: &Path) -> RemoteResult<()> {
+    fn symlink(&self, _path: &Path, _target: &Path) -> RemoteResult<()> {
         Err(RemoteError::new(RemoteErrorType::UnsupportedFeature))
     }
 
-    fn copy(&mut self, _src: &Path, _dest: &Path) -> RemoteResult<()> {
+    fn copy(&self, _src: &Path, _dest: &Path) -> RemoteResult<()> {
         Err(RemoteError::new(RemoteErrorType::UnsupportedFeature))
     }
 
-    fn mov(&mut self, _src: &Path, _dest: &Path) -> RemoteResult<()> {
+    fn mov(&self, _src: &Path, _dest: &Path) -> RemoteResult<()> {
         Err(RemoteError::new(RemoteErrorType::UnsupportedFeature))
     }
 
-    fn exec(&mut self, _cmd: &str) -> RemoteResult<(u32, String)> {
+    fn exec(&self, _cmd: &str) -> RemoteResult<(u32, String)> {
         Err(RemoteError::new(RemoteErrorType::UnsupportedFeature))
     }
 
-    fn append(&mut self, _path: &Path, _metadata: &Metadata) -> RemoteResult<WriteStream> {
+    fn append(&self, _path: &Path, _metadata: &Metadata) -> RemoteResult<WriteStream> {
         Err(RemoteError::new(RemoteErrorType::UnsupportedFeature))
     }
 
-    fn create(&mut self, _path: &Path, _metadata: &Metadata) -> RemoteResult<WriteStream> {
+    fn create(&self, _path: &Path, _metadata: &Metadata) -> RemoteResult<WriteStream> {
         Err(RemoteError::new(RemoteErrorType::UnsupportedFeature))
     }
 
-    fn open(&mut self, _path: &Path) -> RemoteResult<ReadStream> {
+    fn open(&self, _path: &Path) -> RemoteResult<ReadStream> {
         Err(RemoteError::new(RemoteErrorType::UnsupportedFeature))
     }
 
     fn create_file(
-        &mut self,
+        &self,
         path: &Path,
         metadata: &Metadata,
         mut reader: Box<dyn Read>,
@@ -479,11 +485,7 @@ impl RemoteFs for AwsS3Fs {
             .map(|_| metadata.size)
     }
 
-    fn open_file(
-        &mut self,
-        src: &Path,
-        mut dest: Box<dyn std::io::Write + Send>,
-    ) -> RemoteResult<u64> {
+    fn open_file(&self, src: &Path, mut dest: Box<dyn std::io::Write + Send>) -> RemoteResult<u64> {
         self.check_connection()?;
         if !self.exists(src).ok().unwrap_or(false) {
             return Err(RemoteError::new(RemoteErrorType::NoSuchFileOrDirectory));
@@ -517,13 +519,11 @@ mod test {
     use std::env;
     #[cfg(feature = "with-s3-ci")]
     use std::io::Cursor;
-    #[cfg(feature = "with-s3-ci")]
-    use std::time::SystemTime;
 
     #[test]
     fn should_init_s3() {
         let s3 = AwsS3Fs::new("aws-s3-test", "eu-central-1");
-        assert_eq!(s3.wrkdir.as_path(), Path::new("/"));
+        assert_eq!(s3.wrkdir().as_path(), Path::new("/"));
         assert_eq!(s3.bucket_name.as_str(), "aws-s3-test");
         assert_eq!(s3.region.as_str(), "eu-central-1");
         assert!(s3.bucket.is_none());
@@ -577,7 +577,7 @@ mod test {
     #[test]
     fn s3_resolve() {
         let mut s3 = AwsS3Fs::new("aws-s3-test", "eu-central-1");
-        s3.wrkdir = PathBuf::from("/tmp");
+        s3.wrkdir = RefCell::new(PathBuf::from("/tmp"));
         // Absolute
         assert_eq!(
             s3.resolve(&Path::new("/tmp/sottocartella/")).as_path(),
@@ -618,7 +618,7 @@ mod test {
     #[serial]
     fn should_not_append_to_file() {
         crate::mock::logger();
-        let mut client = setup_client();
+        let client = setup_client();
         // Create file
         let p = Path::new("a.txt");
         // Append to file
@@ -635,7 +635,7 @@ mod test {
     #[serial]
     fn should_change_directory() {
         crate::mock::logger();
-        let mut client = setup_client();
+        let client = setup_client();
         let pwd = client.pwd().ok().unwrap();
         assert!(client.change_dir(Path::new("/")).is_ok());
         assert!(client.change_dir(pwd.as_path()).is_ok());
@@ -647,7 +647,7 @@ mod test {
     #[serial]
     fn should_not_change_directory() {
         crate::mock::logger();
-        let mut client = setup_client();
+        let client = setup_client();
         assert!(client
             .change_dir(Path::new("/tmp/sdfghjuireghiuergh/useghiyuwegh"))
             .is_err());
@@ -659,7 +659,7 @@ mod test {
     #[serial]
     fn should_not_copy_file() {
         crate::mock::logger();
-        let mut client = setup_client();
+        let client = setup_client();
         // Create file
         let p = Path::new("a.txt");
         let file_data = "test data\n";
@@ -676,7 +676,7 @@ mod test {
     #[serial]
     fn should_create_directory() {
         crate::mock::logger();
-        let mut client = setup_client();
+        let client = setup_client();
         // create directory
         assert!(client
             .create_dir(Path::new("mydir"), UnixPex::from(0o755))
@@ -689,7 +689,7 @@ mod test {
     #[serial]
     fn should_not_create_directory_cause_already_exists() {
         crate::mock::logger();
-        let mut client = setup_client();
+        let client = setup_client();
         // create directory
         assert!(client
             .create_dir(Path::new("mydir"), UnixPex::from(0o755))
@@ -710,7 +710,7 @@ mod test {
     #[serial]
     fn should_not_create_directory() {
         crate::mock::logger();
-        let mut client = setup_client();
+        let client = setup_client();
         // create directory
         assert!(client
             .create_dir(
@@ -726,7 +726,7 @@ mod test {
     #[serial]
     fn should_create_file() {
         crate::mock::logger();
-        let mut client = setup_client();
+        let client = setup_client();
         // Create file
         let p = Path::new("a.txt");
         let file_data = "test data\n";
@@ -750,7 +750,7 @@ mod test {
     #[serial]
     fn should_not_exec_command() {
         crate::mock::logger();
-        let mut client = setup_client();
+        let client = setup_client();
         assert!(client.exec("echo 5").is_err());
         finalize_client(client);
     }
@@ -760,7 +760,7 @@ mod test {
     #[serial]
     fn should_tell_whether_file_exists() {
         crate::mock::logger();
-        let mut client = setup_client();
+        let client = setup_client();
         // Create file
         let p = Path::new("a.txt");
         let file_data = "test data\n";
@@ -783,7 +783,7 @@ mod test {
     #[serial]
     fn should_list_dir() {
         crate::mock::logger();
-        let mut client = setup_client();
+        let client = setup_client();
         // Create file
         let wrkdir = client.pwd().ok().unwrap();
         let p = Path::new("a.txt");
@@ -815,7 +815,7 @@ mod test {
     #[serial]
     fn should_not_move_file() {
         crate::mock::logger();
-        let mut client = setup_client();
+        let client = setup_client();
         // Create file
         let p = Path::new("a.txt");
         let file_data = "test data\n";
@@ -833,7 +833,7 @@ mod test {
     #[serial]
     fn should_open_file() {
         crate::mock::logger();
-        let mut client = setup_client();
+        let client = setup_client();
         // Create file
         let p = Path::new("a.txt");
         let file_data = "test data\n";
@@ -852,7 +852,7 @@ mod test {
     #[serial]
     fn should_not_open_file() {
         crate::mock::logger();
-        let mut client = setup_client();
+        let client = setup_client();
         // Verify size
         let buffer: Box<dyn std::io::Write + Send> = Box::new(Vec::with_capacity(512));
         assert!(client
@@ -866,7 +866,7 @@ mod test {
     #[serial]
     fn should_print_working_directory() {
         crate::mock::logger();
-        let mut client = setup_client();
+        let client = setup_client();
         assert!(client.pwd().is_ok());
         finalize_client(client);
     }
@@ -876,7 +876,7 @@ mod test {
     #[serial]
     fn should_remove_dir_all() {
         crate::mock::logger();
-        let mut client = setup_client();
+        let client = setup_client();
         // Create dir
         let mut dir_path = client.pwd().ok().unwrap();
         dir_path.push(Path::new("test/"));
@@ -903,7 +903,7 @@ mod test {
     #[serial]
     fn should_remove_dir() {
         crate::mock::logger();
-        let mut client = setup_client();
+        let client = setup_client();
         // Create dir
         let mut dir_path = client.pwd().ok().unwrap();
         dir_path.push(Path::new("test/"));
@@ -919,7 +919,7 @@ mod test {
     #[serial]
     fn should_not_remove_dir() {
         crate::mock::logger();
-        let mut client = setup_client();
+        let client = setup_client();
         // Remove dir
         assert!(client.remove_dir(Path::new("test/")).is_err());
         finalize_client(client);
@@ -930,7 +930,7 @@ mod test {
     #[serial]
     fn should_remove_file() {
         crate::mock::logger();
-        let mut client = setup_client();
+        let client = setup_client();
         // Create file
         let p = Path::new("a.txt");
         let file_data = "test data\n";
@@ -947,7 +947,7 @@ mod test {
     #[serial]
     fn should_not_setstat_file() {
         crate::mock::logger();
-        let mut client = setup_client();
+        let client = setup_client();
         // Create file
         let p = Path::new("a.sh");
         let file_data = "echo 5\n";
@@ -959,12 +959,12 @@ mod test {
             .setstat(
                 p,
                 Metadata {
-                    accessed: SystemTime::UNIX_EPOCH,
-                    created: SystemTime::UNIX_EPOCH,
+                    accessed: None,
+                    created: None,
                     gid: Some(1000),
                     file_type: remotefs::fs::FileType::File,
                     mode: Some(UnixPex::from(0o755)),
-                    modified: SystemTime::UNIX_EPOCH,
+                    modified: None,
                     size: 7,
                     symlink: None,
                     uid: Some(1000),
@@ -979,7 +979,7 @@ mod test {
     #[serial]
     fn should_stat_file() {
         crate::mock::logger();
-        let mut client = setup_client();
+        let client = setup_client();
         // Create file
         let p = Path::new("a.sh");
         let file_data = "echo 5\n";
@@ -1002,7 +1002,7 @@ mod test {
     #[serial]
     fn should_not_stat_file() {
         crate::mock::logger();
-        let mut client = setup_client();
+        let client = setup_client();
         // Create file
         let p = Path::new("a.sh");
         assert!(client.stat(p).is_err());
@@ -1014,7 +1014,7 @@ mod test {
     #[serial]
     fn should_make_symlink() {
         crate::mock::logger();
-        let mut client = setup_client();
+        let client = setup_client();
         // Create file
         let p = Path::new("a.sh");
         let file_data = "echo 5\n";
@@ -1032,7 +1032,7 @@ mod test {
     #[serial]
     fn should_not_make_symlink() {
         crate::mock::logger();
-        let mut client = setup_client();
+        let client = setup_client();
         // Create file
         let p = Path::new("a.sh");
         let file_data = "echo 5\n";
