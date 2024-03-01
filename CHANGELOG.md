@@ -1,12 +1,19 @@
 # Changelog
 
 - [Changelog](#changelog)
+  - [0.2.3](#023)
   - [0.2.2](#022)
   - [0.2.1](#021)
   - [0.2.0](#020)
   - [0.1.0](#010)
 
 ---
+
+## 0.2.3
+
+Released on 01/03/2024
+
+- Bump `rust-s3` to `0.34.0-rc4` which fixes issues with `open_file`
 
 ## 0.2.2
 
