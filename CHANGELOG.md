@@ -1,6 +1,7 @@
 # Changelog
 
 - [Changelog](#changelog)
+  - [0.4.1](#041)
   - [0.4.0](#040)
   - [0.3.1](#031)
   - [0.3.0](#030)
@@ -12,6 +13,12 @@
   - [0.1.0](#010)
 
 ---
+
+## 0.4.1
+
+Released on 16/03/2024
+
+- fixed aws-s3 upload. It doesn't support offsets for write, but only multipart
 
 ## 0.4.0
 
