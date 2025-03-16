@@ -11,10 +11,14 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
       - name: Build
         run: cargo build --all-features
       - name: Run tests
-        run: cargo test --verbose --no-default-features --features find,native-tls,github-actions --no-fail-fast
+        run: cargo test --verbose --no-default-features --features find,github-actions --no-fail-fast
         env:
           RUST_LOG: trace
       - name: Clippy
