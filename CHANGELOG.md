@@ -1,6 +1,7 @@
 # Changelog
 
 - [Changelog](#changelog)
+  - [0.4.0](#040)
   - [0.3.1](#031)
   - [0.3.0](#030)
   - [0.2.4](#024)
@@ -11,6 +12,20 @@
   - [0.1.0](#010)
 
 ---
+
+## 0.4.0
+
+Released on 16/03/2024
+
+- Migrated to rust `aws-sdk-s3`
+- use `testcontainers` for tests
+- rust edition `2024`
+
+‼️ WARNING: this release has changed the S3 Backend!!!
+
+I've finally with like 3 years of delay **migrated** to the **official AWS SDK for Rust**.
+
+From the user side, actually there aren't many changes, the only thing that actually matters is that **you need to have a tokio Runtime** to run the client. The `AwsS3Fs::new` now takes both the `bucket` and the `runtime` as an `Arc<Runtime>` argument.
 
 ## 0.3.1
 
