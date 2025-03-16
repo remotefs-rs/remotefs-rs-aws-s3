@@ -1,6 +1,7 @@
 # Changelog
 
 - [Changelog](#changelog)
+  - [0.4.0](#040)
   - [0.3.1](#031)
   - [0.3.0](#030)
   - [0.2.4](#024)
@@ -11,6 +12,14 @@
   - [0.1.0](#010)
 
 ---
+
+## 0.4.0
+
+Released on 16/03/2024
+
+- Migrated to rust aws-sdk
+- use `testcontainers` for tests
+- rust edition `2024`
 
 ## 0.3.1
 
