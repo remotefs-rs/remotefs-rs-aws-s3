@@ -113,10 +113,10 @@ In case you want to test the aws s3 client, you need to follow these steps:
 
 1. Put in your environment variables the following values:
 
-    - `AWS_S3_BUCKET`: name of your s3 bucket
-    - `AWS_S3_REGION`: the region assigned to your s3 bucket
-    - `AWS_ACCESS_KEY_ID`: your access key ID
-    - `AWS_SECRET_ACCESS_KEY`: your aws secret access key
+   - `AWS_S3_BUCKET`: name of your s3 bucket
+   - `AWS_S3_REGION`: the region assigned to your s3 bucket
+   - `AWS_ACCESS_KEY_ID`: your access key ID
+   - `AWS_SECRET_ACCESS_KEY`: your aws secret access key
 
 2. Run tests with `cargo test --features with-s3-ci`
 
@@ -125,5 +125,5 @@ In case you want to test the aws s3 client, you need to follow these steps:
 
 ---
 
-Thank you for any contribution!  
+Thank you for any contribution!\
 Christian Visintin
