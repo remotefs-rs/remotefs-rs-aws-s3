@@ -1,102 +1,91 @@
 # Changelog
 
-- [Changelog](#changelog)
-  - [0.4.3](#043)
-  - [0.4.2](#042)
-  - [0.4.1](#041)
-  - [0.4.0](#040)
-  - [0.3.1](#031)
-  - [0.3.0](#030)
-  - [0.2.4](#024)
-  - [0.2.3](#023)
-  - [0.2.2](#022)
-  - [0.2.1](#021)
-  - [0.2.0](#020)
-  - [0.1.0](#010)
+All notable changes to this project are documented in this file.
 
----
+## 0.4.4
+
+Released on 2026-08-29
+
+### Build
+
+- update dependencies. (#3)
+
+> Increased MSRV to 1.94.1
 
 ## 0.4.3
 
 Released on 2025-12-20
 
-- MRSV 1.89
+### Fixed
+
+- lint
 
 ## 0.4.2
 
-Released on 23/03/2025
+Released on 2025-03-23
+
+### Fixed
 
 - fixed `remove_file` which didn't removed files
 
 ## 0.4.1
 
-Released on 16/03/2025
+Released on 2025-03-16
 
-- fixed aws-s3 upload. It doesn't support offsets for write, but only multipart
+### Fixed
+
+- **upload:** fixed aws-s3 upload. It doesn't support offsets for write, but only multipart
 
 ## 0.4.0
 
-Released on 16/03/2025
+Released on 2025-03-16
 
-- Migrated to rust `aws-sdk-s3`
-- use `testcontainers` for tests
-- rust edition `2024`
+### Breaking changes
 
-‼️ WARNING: this release has changed the S3 Backend!!!
+- use testcontainers for tests; rust edition 2024
 
-I've finally with like 3 years of delay **migrated** to the **official AWS SDK for Rust**.
+> use testcontainers for tests; rust edition 2024
 
-From the user side, actually there aren't many changes, the only thing that actually matters is that **you need to have a tokio Runtime** to run the client. The `AwsS3Fs::new` now takes both the `bucket` and the `runtime` as an `Arc<Runtime>` argument.
+- **aws:** migrated to aws-sdk
+
+> migrated to aws-sdk
+
+### Added
+
+- Breaking: use testcontainers for tests; rust edition 2024
+- Breaking: **aws:** migrated to aws-sdk
+
+> I've finally with like 3 years of delay **migrated** to the **official AWS SDK for Rust**.
+
+### Fixed
+
+- test is sync and send
 
 ## 0.3.1
 
-Released on 07/10/2024
+Released on 2024-10-07
 
-- Removed unused dep: `users`
+### Fixed
+
+- removed users dep
 
 ## 0.3.0
 
-Released on 30/09/2024
+Released on 2024-09-30
+
+### Added
 
 - remotefs 0.3.0
 
-## 0.2.4
+### Fixed
 
-Released on 02/03/2024
-
-- Fixed windows build
-
-## 0.2.3
-
-Released on 01/03/2024
-
-- Bump `rust-s3` to `0.34.0-rc4` which fixes issues with `open_file`
-
-## 0.2.2
-
-Released on 01/03/2024
-
-- Bump `rust-s3` to `0.33`
-
-## 0.2.1
-
-Released on 10/10/2022
-
-- Added `native-tls` and `rustls` support
-
-## 0.2.0
-
-Released on 05/02/2022
-
-- Added support for S3 compatible APIs (such as minio, yandex)
-- New constructor methods
-  - `new()` will now accept only the bucket name
-  - `region()` to specify the region. If no region is specified, custom region will be used
-  - `endpoint()` to specify the endpoint. Useful to connect to minio
-  - `new_path_style()`: must be specified when connecting to some backends, such as minio
+- bump rust-s3
+- bump rust-s3 to 0.34
+- lint
+- windows build
+- version
+- ci
 
 ## 0.1.0
 
-Released on 04/01/2022
-
-- First release
+Released on 2022-01-04
