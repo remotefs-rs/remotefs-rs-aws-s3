@@ -2,9 +2,19 @@
 
 All notable changes to this project are documented in this file.
 
-## 0.4.4
+## 1.0.0
 
-Released on 2026-08-29
+Released on 2026-09-09
+
+### Breaking changes
+
+- migrate to remotefs 1
+
+> migrate AwsS3Fs to the remotefs 1 asynchronous API and release version 1.0.0.
+
+### Added
+
+- Breaking: migrate to remotefs 1
 
 ### Build
 

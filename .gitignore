@@ -23,3 +23,8 @@ dist/pkgs/arch/*.tar.gz
 
 # Macos
 .DS_Store
+
+# Local planning state
+.superpowers/
+docs/superpowers/
+.claude/plans/

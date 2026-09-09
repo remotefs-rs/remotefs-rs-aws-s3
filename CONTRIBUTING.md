@@ -109,19 +109,19 @@ In addition to the process described for the PRs, I've also decided to introduce
 
 ## Run test units
 
-In case you want to test the aws s3 client, you need to follow these steps:
+Unit tests run with `just test`. The MinIO-backed integration suite needs
+Docker:
 
-1. Put in your environment variables the following values:
+```sh
+just integration
+```
 
-   - `AWS_S3_BUCKET`: name of your s3 bucket
-   - `AWS_S3_REGION`: the region assigned to your s3 bucket
-   - `AWS_ACCESS_KEY_ID`: your access key ID
-   - `AWS_SECRET_ACCESS_KEY`: your aws secret access key
+To run the suite against a real bucket instead, export `AWS_S3_BUCKET`,
+`AWS_S3_REGION`, `AWS_ACCESS_KEY_ID`, and `AWS_SECRET_ACCESS_KEY`, then run:
 
-2. Run tests with `cargo test --features with-s3-ci`
-
-> ⚠️ The aws-s3 client test units sends about ~ 100 GET requests to your s3 bucket.
-> ❗ The author of the library is not in any case responsible for ANY additional cost requested by Amazon caused by testing this library.
+```sh
+just test "--features with-s3-ci -- --test-threads=1"
+```
 
 ---
 

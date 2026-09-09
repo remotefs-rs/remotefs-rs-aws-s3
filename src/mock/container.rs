@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::time::Duration;
 
 use testcontainers::core::{ContainerPort, WaitFor};
-use testcontainers::{Container, Image};
+use testcontainers::{ContainerAsync, Image, ImageExt};
 
 #[derive(Debug, Clone)]
 struct MinioImage;
@@ -36,21 +36,26 @@ impl Image for MinioImage {
 }
 
 pub struct Minio {
-    container: Container<MinioImage>,
+    container: ContainerAsync<MinioImage>,
 }
 
 impl Minio {
-    pub fn start() -> Self {
-        use testcontainers::runners::SyncRunner;
-        let container = MinioImage.start().expect("Failed to start container");
+    pub async fn start() -> Self {
+        use testcontainers::runners::AsyncRunner;
+        let container = MinioImage
+            .with_mapped_port(0, ContainerPort::Tcp(9000))
+            .start()
+            .await
+            .expect("Failed to start container");
 
         Self { container }
     }
 
-    pub fn port(&self) -> u16 {
-        std::thread::sleep(Duration::from_secs(5));
+    pub async fn port(&self) -> u16 {
+        tokio::time::sleep(Duration::from_secs(5)).await;
         self.container
             .get_host_port_ipv6(9000)
+            .await
             .expect("Failed to get port")
     }
 }
