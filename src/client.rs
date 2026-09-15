@@ -272,9 +272,11 @@ impl AwsS3Fs {
 /// Every call blocks on the supplied Tokio handle and must not be made from
 /// inside an async context. Build one with [`AwsS3Fs::into_blocking`].
 #[cfg(feature = "tokio")]
+#[cfg_attr(docsrs, doc(cfg(feature = "tokio")))]
 pub type BlockingAwsS3Fs = remotefs::adapters::blocking::BlockOn<AwsS3Fs>;
 
 #[cfg(feature = "tokio")]
+#[cfg_attr(docsrs, doc(cfg(feature = "tokio")))]
 impl AwsS3Fs {
     /// Wraps the client for blocking callers using the given runtime handle.
     ///

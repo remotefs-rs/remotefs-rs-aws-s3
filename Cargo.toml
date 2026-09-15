@@ -14,6 +14,10 @@ repository = "https://github.com/remotefs-rs/remotefs-rs-aws-s3"
 rust-version = "1.94.1"
 description = "remotefs Aws S3 client library"
 
+[package.metadata.docs.rs]
+features = ["tokio"]
+rustdoc-args = ["--cfg", "docsrs"]
+
 [dependencies]
 aws-config = "1"
 aws-credential-types = "1"

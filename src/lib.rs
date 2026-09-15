@@ -126,6 +126,7 @@
 //! `UnsupportedFeature`.
 //!
 
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #![doc(html_playground_url = "https://play.rust-lang.org")]
 #![doc(
     html_favicon_url = "https://raw.githubusercontent.com/remotefs-rs/remotefs-rs/main/assets/logo-128.png"
@@ -141,6 +142,7 @@ extern crate log;
 pub mod client;
 pub use client::AwsS3Fs;
 #[cfg(feature = "tokio")]
+#[cfg_attr(docsrs, doc(cfg(feature = "tokio")))]
 #[doc(inline)]
 pub use client::BlockingAwsS3Fs;
 
