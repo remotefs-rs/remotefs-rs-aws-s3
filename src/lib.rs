@@ -26,7 +26,7 @@
 //! | --- | --- | --- |
 //! | `find` | Enable the remotefs `find_async()` function. | ✔ |
 //! | `no-log` | Disable logging through the `log` crate. | |
-//! | `tokio` | Enable the remotefs Tokio adapters for blocking callers. | |
+//! | `tokio` | Enable `BlockingAwsS3Fs` and `AwsS3Fs::into_blocking`. | |
 //! | `with-containers` | Enable MinIO-backed integration tests. | |
 //! | `with-s3-ci` | Enable tests against a configured S3 bucket. | |
 //!
@@ -93,17 +93,26 @@
 //!
 //! ### Blocking usage
 //!
-//! Enable the `tokio` feature and wrap the client in `BlockOn`; the adapter
-//! must not be called from inside an async context.
+//! Enable the `tokio` feature and call [`AwsS3Fs::into_blocking`] to get a
+//! `BlockingAwsS3Fs`, which implements [`remotefs::RemoteFs`] and can be
+//! stored as `Box<dyn RemoteFs>`. It must not be called from inside an async
+//! context, and the handle must belong to a multi-thread Tokio runtime.
 //!
-//! ```rust,ignore
+//! ```rust,no_run
 //! use remotefs::RemoteFs;
-//! use remotefs::adapters::blocking::BlockOn;
 //! use remotefs_aws_s3::AwsS3Fs;
 //!
-//! let runtime = tokio::runtime::Runtime::new().unwrap();
-//! let mut client = BlockOn::new(AwsS3Fs::new("test-bucket"), runtime.handle().clone());
-//! client.connect().unwrap();
+//! # #[cfg(feature = "tokio")]
+//! # fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! let runtime = tokio::runtime::Runtime::new()?;
+//! let mut client: Box<dyn RemoteFs> =
+//!     Box::new(AwsS3Fs::new("test-bucket").into_blocking(runtime.handle().clone()));
+//! client.connect()?;
+//! client.disconnect()?;
+//! # Ok(())
+//! # }
+//! # #[cfg(not(feature = "tokio"))]
+//! # fn main() {}
 //! ```
 //!
 //! ### Transfers
@@ -131,6 +140,9 @@ extern crate log;
 
 pub mod client;
 pub use client::AwsS3Fs;
+#[cfg(feature = "tokio")]
+#[doc(inline)]
+pub use client::BlockingAwsS3Fs;
 
 // -- key
 pub(crate) mod key;

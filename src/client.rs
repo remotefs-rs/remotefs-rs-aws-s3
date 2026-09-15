@@ -24,8 +24,9 @@ use crate::stream::write::S3Writer;
 
 /// Aws S3 file system client.
 ///
-/// The client implements [`AsyncRemoteFs`]. Blocking callers can wrap it in
-/// `remotefs::adapters::blocking::BlockOn` when the `tokio` feature is enabled.
+/// The client implements [`AsyncRemoteFs`]. With the `tokio` feature,
+/// [`AwsS3Fs::into_blocking`] returns a `BlockingAwsS3Fs` implementing the
+/// blocking [`remotefs::RemoteFs`].
 #[derive(Debug)]
 pub struct AwsS3Fs {
     client: Option<S3Client>,
@@ -263,6 +264,52 @@ impl AwsS3Fs {
         builder.set_force_path_style(Some(self.new_path_style));
         builder.set_endpoint_url(self.endpoint.clone());
         S3Client::from_conf(builder.build())
+    }
+}
+
+/// A blocking view of [`AwsS3Fs`] that implements [`remotefs::RemoteFs`].
+///
+/// Every call blocks on the supplied Tokio handle and must not be made from
+/// inside an async context. Build one with [`AwsS3Fs::into_blocking`].
+#[cfg(feature = "tokio")]
+pub type BlockingAwsS3Fs = remotefs::adapters::blocking::BlockOn<AwsS3Fs>;
+
+#[cfg(feature = "tokio")]
+impl AwsS3Fs {
+    /// Wraps the client for blocking callers using the given runtime handle.
+    ///
+    /// The returned value implements [`remotefs::RemoteFs`] and can be stored
+    /// as `Box<dyn RemoteFs>`. Calling it from an async context panics, as
+    /// documented by [`tokio::runtime::Handle::block_on`].
+    ///
+    /// # Panics
+    ///
+    /// Panics if `handle` belongs to a current-thread runtime, which cannot
+    /// drive the blocked operation from a non-async caller.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use remotefs::RemoteFs;
+    /// use remotefs_aws_s3::AwsS3Fs;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let runtime = tokio::runtime::Runtime::new()?;
+    /// let mut client: Box<dyn RemoteFs> =
+    ///     Box::new(AwsS3Fs::new("test-bucket").into_blocking(runtime.handle().clone()));
+    /// client.connect()?;
+    /// client.disconnect()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[must_use]
+    pub fn into_blocking(self, handle: tokio::runtime::Handle) -> BlockingAwsS3Fs {
+        assert_ne!(
+            handle.runtime_flavor(),
+            tokio::runtime::RuntimeFlavor::CurrentThread,
+            "into_blocking requires a multi-thread Tokio runtime"
+        );
+        remotefs::adapters::blocking::BlockOn::new(self, handle)
     }
 }
 
@@ -1224,7 +1271,6 @@ mod test {
         use std::io::Cursor as StdCursor;
 
         use remotefs::RemoteFs as _;
-        use remotefs::adapters::blocking::BlockOn;
 
         crate::mock::logger();
         let runtime = tokio::runtime::Runtime::new().unwrap();
@@ -1234,7 +1280,7 @@ mod test {
             wrkdir,
             container: _container,
         } = ctx;
-        let blocking = BlockOn::new(client, runtime.handle().clone());
+        let blocking = client.into_blocking(runtime.handle().clone());
         let path = wrkdir.join("blocking.txt");
         let mut source = StdCursor::new(b"blocking".to_vec());
         assert_eq!(
