@@ -9,15 +9,15 @@ struct MinioImage;
 
 impl Image for MinioImage {
     fn name(&self) -> &str {
-        "minio/minio"
+        "quay.io/minio/minio"
     }
 
     fn tag(&self) -> &str {
-        "RELEASE.2022-02-07T08-17-33Z"
+        "RELEASE.2025-09-07T16-13-09Z"
     }
 
     fn ready_conditions(&self) -> Vec<WaitFor> {
-        vec![WaitFor::message_on_stdout("API:")]
+        vec![WaitFor::message_on_stderr("API:")]
     }
 
     fn expose_ports(&self) -> &[ContainerPort] {
