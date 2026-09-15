@@ -18,7 +18,7 @@ description = "remotefs Aws S3 client library"
 aws-config = "1"
 aws-credential-types = "1"
 aws-sdk-s3 = { version = "1", default-features = false, features = ["default-https-client", "http-1x", "rt-tokio", "sigv4a"] }
-aws-smithy-types = { version = "1", features = ["byte-stream-poll-next"] }
+aws-smithy-types = { version = ">=1, <1.7.0", features = ["byte-stream-poll-next"] }
 bytes = "1"
 futures-io = "0.3"
 log = "0.4"
