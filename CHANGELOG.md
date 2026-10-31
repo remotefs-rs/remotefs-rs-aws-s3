@@ -2,19 +2,60 @@
 
 All notable changes to this project are documented in this file.
 
+## 1.0.1
+
+Released on 2026-10-31
+
+### Build
+
+- bump `aws-smithy-types` `>=1`
+
 ## 1.0.0
 
-Released on 2026-09-09
+Released on 2026-09-15
 
 ### Breaking changes
 
-- migrate to remotefs 1
+- migrate to remotefs 1 (#4)
 
 > migrate AwsS3Fs to the remotefs 1 asynchronous API and release version 1.0.0.
 
+- feat: add blocking client behind tokio feature
+
+Add AwsS3Fs::into_blocking and BlockingAwsS3Fs, mirroring the pattern
+used in remotefs-webdav, so callers can get a RemoteFs implementation
+without wiring remotefs::adapters::blocking::BlockOn themselves.
+
+- build: pin aws-smithy-types below the breaking 1.7.0 release
+
+aws-smithy-types 1.7.0 changed the Document::Object variant's inner
+type without a major version bump, which breaks compilation of
+aws-smithy-json 0.63.0 (pulled in transitively via aws-config) once
+cargo unifies the whole tree to smithy-types 1.7.0. Constrain the
+dependency until the ecosystem catches up.
+
+- docs: gate the tokio feature correctly for docs.rs
+
+The blocking client lives behind the non-default tokio feature, so
+docs.rs never rendered it. Build docs.rs with that feature enabled
+and mark the gated items with doc(cfg(...)) so the rendered docs show
+the feature requirement.
+
+- fix: switch MinIO test image to quay.io and watch its stderr banner
+
+Docker Hub removed the minio/minio repository entirely, so the pinned
+2022 release tag 404s on pull. Point testcontainers at quay.io/minio/minio
+instead, pinned to a current release. That image also moved its
+
 ### Added
 
-- Breaking: migrate to remotefs 1
+- Breaking: migrate to remotefs 1 (#4)
+
+> - feat!: migrate to remotefs 1
+
+## 0.4.4
+
+Released on 2026-08-29
 
 ### Build
 
