@@ -109,7 +109,7 @@ In addition to the process described for the PRs, I've also decided to introduce
 
 ## Run test units
 
-Unit tests run with `just test`. The MinIO-backed integration suite needs
+Unit tests run with `just test`. The RustFS-backed integration suite needs
 Docker:
 
 ```sh
